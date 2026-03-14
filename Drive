@@ -1,0 +1,171 @@
+package Teleop;
+
+
+import com.acmerobotics.dashboard.FtcDashboard;
+import com.acmerobotics.dashboard.telemetry.MultipleTelemetry;
+import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
+import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+import com.qualcomm.robotcore.hardware.CRServo;
+import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.DcMotorEx;
+import com.qualcomm.robotcore.hardware.DcMotorSimple;
+import com.qualcomm.robotcore.hardware.Servo;
+import com.qualcomm.robotcore.util.ElapsedTime;
+
+@TeleOp (name = "Drive like good boy")
+public class Drive extends LinearOpMode {
+    private final ElapsedTime runtime = new ElapsedTime();
+    private DcMotor RD = null;
+    private DcMotor LD = null;
+    private DcMotorEx SHOOT = null;
+    private CRServo Left_servo = null;
+    private CRServo Right_servo = null;
+    private double speedLimiter = 1;
+
+    double motorVelocity = 2360;
+
+    double launchLimiter;
+
+    private double CurrentVelocity;
+
+
+
+
+
+
+    @Override
+    public void runOpMode() throws InterruptedException {
+
+        double axial = 0;
+        double lateral = 0;
+        double yaw = 0;
+
+        LD = hardwareMap.get(DcMotor.class, "Left_Drive");
+        SHOOT = hardwareMap.get(DcMotorEx.class, "Shooter");
+        RD = hardwareMap.get(DcMotor.class, "Right_Drive");
+        Right_servo = hardwareMap.get(CRServo.class, "Right_servo");
+        Left_servo = hardwareMap.get(CRServo.class, "Left_servo");
+
+
+
+        RD.setDirection(DcMotor.Direction.FORWARD);
+        LD.setDirection(DcMotor.Direction.REVERSE);
+        SHOOT.setDirection(DcMotorEx.Direction.REVERSE);
+        Left_servo.setDirection(CRServo.Direction.FORWARD);
+        Right_servo.setDirection(CRServo.Direction.REVERSE);
+
+
+        RD.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        LD.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        SHOOT.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
+
+
+        RD.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        LD.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        SHOOT.setMode(DcMotorEx.RunMode.RUN_USING_ENCODER);
+
+
+        RD.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        LD.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        SHOOT.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
+
+        telemetry = new MultipleTelemetry(telemetry, FtcDashboard.getInstance().getTelemetry());
+
+
+        // Wait for the game to start (driver presses PLAY)
+        telemetry.addData("Status", "Initialized");
+        telemetry.update();
+
+
+        waitForStart();
+        runtime.reset();
+
+        while (opModeIsActive()) {
+
+            if (gamepad1.dpad_down) {
+                speedLimiter = 2;
+
+            } else if (gamepad1.dpad_up) {
+                speedLimiter = 1;
+            } else if (gamepad1.dpad_right) {
+                speedLimiter = 1.65;
+            }
+
+            if(gamepad1.a) {
+                launchLimiter = 0.55;
+            }
+
+            if(gamepad1.b) {
+                launchLimiter = 0;
+            }
+
+            if(gamepad1.y){
+                launchLimiter = 0.7;
+            }
+
+
+
+            if (gamepad1.right_bumper) {
+                Left_servo.setPower(-1);
+                Right_servo.setPower(-1);
+                sleep(60);
+                Left_servo.setPower(1);
+                Right_servo.setPower(1);
+                sleep(200);
+                Left_servo.setPower(0);
+                Right_servo.setPower(0);
+
+            }
+
+
+
+           CurrentVelocity = motorVelocity * launchLimiter * -1;
+            SHOOT.setVelocity(CurrentVelocity);
+
+             double max = 0;
+
+            axial = -gamepad1.left_stick_y;  // Note: pushing stick forward gives negative value
+            lateral = gamepad1.left_stick_x * 1.1;
+            yaw = gamepad1.right_stick_x;
+
+
+
+            // Combine the joystick requests for each axis-motion to determine each wheel's power.
+            // Set up a variable for each drive wheel to save the power level for telemetry.
+            double leftFrontPower = axial + lateral + yaw;
+            double rightFrontPower = axial - lateral - yaw;
+
+            double leftFrontPower = axial + lateral + yaw;
+            double rightFrontPower = axial - lateral - yaw;
+
+
+            // Normalize the values so no wheel power exceeds 100%
+            // This ensures that the robot maintains the desired motion.
+
+
+            if (max > 1.0) {
+                leftFrontPower /= max;
+                rightFrontPower /= max;
+
+            }
+
+            leftFrontPower /= speedLimiter;
+            rightFrontPower /= speedLimiter;
+
+            // Send calculated power to wheels
+            LD.setPower(leftFrontPower);
+            RD.setPower(rightFrontPower);
+
+
+            // Show the elapsed game time and wheel power.
+            telemetry.addData("Status", "Run Time: " + runtime.toString());
+            telemetry.addData("Front left/Right", "%4.2f, %4.2f", leftFrontPower, rightFrontPower);
+            telemetry.addData("Current speedLimiter: ", speedLimiter);
+            telemetry.update();
+
+
+        }
+
+
+    }
+}
